@@ -1,0 +1,87 @@
+# Cold Chain Monitor (small demo)
+
+A small, rules-based app that checks whether temperature-sensitive shipments stayed
+within their product limits. It shows three decisions: **Compliant**, **Non-compliant**,
+and **Review required** (insufficient or uncertain evidence). It never marks a shipment
+compliant just because no violation was found.
+
+All data is synthetic and generated locally from a fixed seed.
+
+## Project layout
+
+```
+backend/
+  main.py       FastAPI app: JSON API under /api, serves the frontend
+  database.py   SQLAlchemy models, schema setup, dataset loading
+  logic.py      Rules engine, demo data generator, ground-truth evaluation
+frontend/
+  index.html    Page shell and navigation
+  style.css     Styling
+  app.js        Pages, API calls, temperature chart (inline SVG)
+```
+
+## Run it
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install fastapi uvicorn sqlalchemy
+uvicorn main:app --reload
+```
+
+Open http://127.0.0.1:8000
+
+The server creates `backend/cold_chain.db` (SQLite) and generates 50 shipments on
+startup. Each start resets the demo data to the same seed, so results are repeatable.
+
+To use MySQL 8 instead, install `pymysql` and set:
+
+```bash
+export DATABASE_URL="mysql+pymysql://USER:PASSWORD@HOST:3306/cold_chain"
+```
+
+## Pages
+
+- **Dashboard**: KPIs, status distribution, shipments needing attention, temperature trend.
+- **Shipments**: search by ID, filter by status, paginated table.
+- **Shipment detail**: policy, readings chart, decision reasons, custody timeline,
+  excursions, and missing-data intervals.
+- **Evaluation**: precision, recall, F1, and false-compliant rate against ground truth.
+- **Data & Export**: regenerate demo data with a chosen size and seed; download CSV or JSON.
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/health` | Health check |
+| GET | `/api/summary` | Dashboard KPIs and attention list |
+| GET | `/api/shipments?q=&status=&page=&size=` | Paginated, filtered list |
+| GET | `/api/shipments/{code}` | Full detail with readings, decision, custody |
+| GET | `/api/export/csv` or `/api/export/json` | Shipment decisions export |
+| GET | `/api/evaluation` | Comparison with ground truth |
+| POST | `/api/data/generate?count=50&seed=20261022` | Replace demo data |
+
+Interactive docs: http://127.0.0.1:8000/docs
+
+## Rules
+
+- **Limits**: a temperature exactly at a limit is in range. Only values strictly outside are out of range.
+- **Duration**: from the first out-of-range reading to the first in-range reading after it, using real timestamps.
+- **No bridging**: an out-of-range run is split at any gap longer than the allowed maximum.
+- **Confirmed vs. uncertain**: an excursion is confirmed only if some reading is beyond the logger's accuracy tolerance. Otherwise it is uncertain.
+- **Decision order**:
+  1. `NON_COMPLIANT`: a confirmed excursion is longer than the allowed duration.
+  2. `REVIEW_REQUIRED`: a missing-data gap, an uncertain reading, or a custody problem (missing PICKUP or DELIVERY, or events out of order).
+  3. `COMPLIANT`: none of the above.
+- **Isolation**: each shipment is evaluated only on its own readings and custody events.
+
+## Limitations
+
+- SQLite by default. MySQL is supported through `DATABASE_URL` but is not the default in this demo.
+- No login. The regenerate endpoint is open, so this is for local demo use only.
+- Only one threshold policy per product and no version history.
+- No separate exception-resolution workflow or audit trail.
+- The ground-truth scenarios were written alongside the rules, so the 100% evaluation
+  score shows the rules are consistent with the scenarios, not that they are accurate on real shipments.
+- The charts are hand-drawn SVG, not Recharts, to keep the frontend to three plain files.

@@ -1,0 +1,55 @@
+```dockerignore
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+build/
+
+# Generated datasets and temporary files
+__pycache__/
+*.tmp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+```
